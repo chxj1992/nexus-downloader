@@ -1,0 +1,13 @@
+target/
+*.iml
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.next
+release.properties
+.classpath
+.settings
+.project
+.idea
+local-cache
+maven-repository-provisioner.log
+.checkstyle
