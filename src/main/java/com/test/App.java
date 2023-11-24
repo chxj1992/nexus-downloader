@@ -77,6 +77,7 @@ public class App {
         }
 
         System.out.println("start download resources");
+        int downloadCounter = 0;
         for (Map map : filteredMap.values()) {
             List<Map> assets = (List<Map>) map.get("assets");
             for (Map dMap : assets) {
@@ -84,16 +85,17 @@ public class App {
                 String path = String.valueOf(dMap.get("path"));
                 if (url.endsWith(".pom") || url.endsWith(".jar")) {
                     genFile(url, initPath + "/" + path);
+                    downloadCounter++;
                 }
             }
         }
-        System.out.println("resources download finished!");
+        System.out.println("resources download finished! download counter: " + downloadCounter);
     }
 
 
     public HashMap<String, Object> readJson(String token) throws IOException {
         OkHttpClient client = new OkHttpClient();
-        String url = "http://maven.xxx.com/service/rest/v1/components?repository=maven-snapshots";
+        String url = "https://maven.xxx.xxx/service/rest/v1/components?repository=maven-snapshots";
         if (StringUtils.isNotBlank(token)) {
             url += "&continuationToken=" + token;
         }
@@ -107,11 +109,12 @@ public class App {
         }
     }
 
-    private void genFile(final String urlStr, final String path) {
-        int counter = 0;
+    private void genFile(String urlStr, String path) {
+        if (urlStr.startsWith("http://")) {
+            urlStr = urlStr.replaceFirst("http://", "https://");
+        }
         URL url;
         while (true) {
-            System.out.println(path + ", retry: " + counter);
             try {
                 Thread.sleep(100);
                 url = new URL(urlStr);
@@ -121,8 +124,7 @@ public class App {
                 FileUtils.copyURLToFile(url, temp);
                 break;
             } catch (Exception e) {
-                System.out.println("download file failed, " + e.getMessage());
-                counter++;
+                System.out.println("download file failed with exception, " + e.getMessage());
             }
         }
     }
