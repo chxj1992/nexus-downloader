@@ -77,6 +77,7 @@ public class App {
         }
 
         System.out.println("start download resources");
+        int downloadCounter = 0;
         for (Map map : filteredMap.values()) {
             List<Map> assets = (List<Map>) map.get("assets");
             for (Map dMap : assets) {
@@ -84,10 +85,11 @@ public class App {
                 String path = String.valueOf(dMap.get("path"));
                 if (url.endsWith(".pom") || url.endsWith(".jar")) {
                     genFile(url, initPath + "/" + path);
+                    downloadCounter ++;
                 }
             }
         }
-        System.out.println("resources download finished!");
+        System.out.println("resources download finished! download counter: " + downloadCounter);
     }
 
 
