@@ -28,7 +28,17 @@ public class App {
         Map<String, Map> filteredMap = new HashMap<>();
         int counter = 0;
         while (true) {
-            HashMap<String, Object> stringStringHashMap = readJson(token);
+            HashMap<String, Object> stringStringHashMap;
+            try {
+                stringStringHashMap = readJson(token);
+            } catch (Exception e) {
+                System.out.println("updated index failed: " + e.getMessage());
+                try {
+                    Thread.sleep(1000);
+                } catch (Exception ignore) {
+                }
+                continue;
+            }
             Object continuationToken = stringStringHashMap.getOrDefault("continuationToken", "");
             if (continuationToken == null || StringUtils.isBlank(String.valueOf(continuationToken))) {
                 System.out.println("index download finished, resources size: " + filteredMap.size());
@@ -58,7 +68,7 @@ public class App {
                     } else if (tVersion1.equals(version1) && tVersion2 > version2) {
                         filteredMap.put(key, map1);
                     } else {
-                        System.out.println("ignore " + key + " " + tVersion1 + "-" + tVersion2 + " | " + version1 + "-" + version2);
+                        System.out.println("ignore " + key + ", current: " + tVersion1 + "-" + tVersion2 + " | existed: " + version1 + "-" + version2);
                     }
                 }
             }
@@ -83,7 +93,7 @@ public class App {
 
     public HashMap<String, Object> readJson(String token) throws IOException {
         OkHttpClient client = new OkHttpClient();
-        String url = "http://maven.xxx.xxx/service/rest/v1/components?repository=maven-snapshots";
+        String url = "http://maven.xxx.com/service/rest/v1/components?repository=maven-snapshots";
         if (StringUtils.isNotBlank(token)) {
             url += "&continuationToken=" + token;
         }
