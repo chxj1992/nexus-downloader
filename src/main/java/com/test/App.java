@@ -25,16 +25,17 @@ public class App {
 
     public void download() throws IOException {
         String token = "";
+        Map<String, Map> filteredMap = new HashMap<>();
+        int counter = 0;
         while (true) {
             HashMap<String, Object> stringStringHashMap = readJson(token);
             Object continuationToken = stringStringHashMap.getOrDefault("continuationToken", "");
             if (continuationToken == null || StringUtils.isBlank(String.valueOf(continuationToken))) {
-                System.out.println("download finished");
+                System.out.println("index download finished, resources size: " + filteredMap.size());
                 break;
             }
             token = String.valueOf(continuationToken);
             List<Map> list = (List) stringStringHashMap.get("items");
-            Map<String, Map> filteredMap = new HashMap<>();
             for (Map map : list) {
                 String group = String.valueOf(map.get("group"));
                 String name = String.valueOf(map.get("name"));
@@ -48,7 +49,7 @@ public class App {
                 if (map1 == null) {
                     filteredMap.put(key, map);
                 } else {
-                    String tVersion = String.valueOf(map.get("version"));
+                    String tVersion = String.valueOf(map1.get("version"));
                     String[] tVersionSplit = tVersion.split("-");
                     Long tVersion1 = Long.parseLong(tVersionSplit[1].replace(".", ""));
                     Long tVersion2 = Long.parseLong(tVersionSplit[2]);
@@ -56,20 +57,27 @@ public class App {
                         filteredMap.put(key, map1);
                     } else if (tVersion1.equals(version1) && tVersion2 > version2) {
                         filteredMap.put(key, map1);
+                    } else {
+                        System.out.println("ignore " + key + " " + tVersion1 + "-" + tVersion2 + " | " + version1 + "-" + version2);
                     }
                 }
             }
-            for (Map map : filteredMap.values()) {
-                List<Map> assets = (List<Map>) map.get("assets");
-                for (Map dMap : assets) {
-                    String url = String.valueOf(dMap.get("downloadUrl"));
-                    String path = String.valueOf(dMap.get("path"));
-                    if (url.endsWith(".pom") || url.endsWith(".jar")) {
-                        genFile(url, initPath + path);
-                    }
+            counter++;
+            System.out.println("index update, counter: " + counter + ", resources size: " + filteredMap.size());
+        }
+
+        System.out.println("start download resources");
+        for (Map map : filteredMap.values()) {
+            List<Map> assets = (List<Map>) map.get("assets");
+            for (Map dMap : assets) {
+                String url = String.valueOf(dMap.get("downloadUrl"));
+                String path = String.valueOf(dMap.get("path"));
+                if (url.endsWith(".pom") || url.endsWith(".jar")) {
+                    genFile(url, initPath + "/" + path);
                 }
             }
         }
+        System.out.println("resources download finished!");
     }
 
 
@@ -104,7 +112,7 @@ public class App {
                 break;
             } catch (Exception e) {
                 System.out.println("download file failed, " + e.getMessage());
-                counter ++;
+                counter++;
             }
         }
     }
