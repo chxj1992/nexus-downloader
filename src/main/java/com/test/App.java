@@ -16,21 +16,34 @@ import java.util.Map;
 
 public class App {
 
-    private static final String initPath = "/tmp/repo";
-
-
     public static void main(String[] args) throws IOException {
-        new App().download();
+        String host = System.getProperty("host");
+        String repoId = System.getProperty("repoId");
+        String dir = System.getProperty("dir");
+        if (StringUtils.isBlank(host) ) {
+            System.out.println("host is required");
+            return;
+        }
+        if (StringUtils.isBlank(repoId)) {
+            System.out.println("repoId is required");
+            return;
+        }
+        if (StringUtils.isBlank(dir)) {
+            System.out.println("dir is required");
+            return;
+        }
+
+        new App().download(host, repoId, dir);
     }
 
-    public void download() throws IOException {
+    public void download(String host, String repoId, String dir) throws IOException {
         String token = "";
         Map<String, Map> filteredMap = new HashMap<>();
         int counter = 0;
         while (true) {
             HashMap<String, Object> stringStringHashMap;
             try {
-                stringStringHashMap = readJson(token);
+                stringStringHashMap = readJson(token, host, repoId);
             } catch (Exception e) {
                 System.out.println("updated index failed: " + e.getMessage());
                 try {
@@ -40,40 +53,48 @@ public class App {
                 continue;
             }
             Object continuationToken = stringStringHashMap.getOrDefault("continuationToken", "");
-            if (continuationToken == null || StringUtils.isBlank(String.valueOf(continuationToken))) {
-                System.out.println("index download finished, resources size: " + filteredMap.size());
+            token = continuationToken != null ? String.valueOf(continuationToken) : null;
+            if (stringStringHashMap.get("items") == null) {
                 break;
             }
-            token = String.valueOf(continuationToken);
             List<Map> list = (List) stringStringHashMap.get("items");
             for (Map map : list) {
                 String group = String.valueOf(map.get("group"));
                 String name = String.valueOf(map.get("name"));
                 String version = String.valueOf(map.get("version"));
-                String[] versionSplit = version.split("-");
-                String version0 = versionSplit[0];
-                Long version1 = Long.parseLong(versionSplit[1].replace(".", ""));
-                Long version2 = Long.parseLong(versionSplit[2]);
-                String key = group + name + version0;
-                Map map1 = filteredMap.get(key);
-                if (map1 == null) {
-                    filteredMap.put(key, map);
-                } else {
-                    String tVersion = String.valueOf(map1.get("version"));
-                    String[] tVersionSplit = tVersion.split("-");
-                    Long tVersion1 = Long.parseLong(tVersionSplit[1].replace(".", ""));
-                    Long tVersion2 = Long.parseLong(tVersionSplit[2]);
-                    if (tVersion1 > version1) {
-                        filteredMap.put(key, map1);
-                    } else if (tVersion1.equals(version1) && tVersion2 > version2) {
-                        filteredMap.put(key, map1);
+                if (version.endsWith("-SNAPSHOT")) {
+                    String[] versionSplit = version.split("-");
+                    String version0 = versionSplit[0];
+                    Long version1 = Long.parseLong(versionSplit[1].replace(".", ""));
+                    Long version2 = Long.parseLong(versionSplit[2]);
+                    String key = group + name + version0;
+                    Map map1 = filteredMap.get(key);
+                    if (map1 == null) {
+                        filteredMap.put(key, map);
                     } else {
-                        System.out.println("ignore " + key + ", current: " + tVersion1 + "-" + tVersion2 + " | existed: " + version1 + "-" + version2);
+                        String tVersion = String.valueOf(map1.get("version"));
+                        String[] tVersionSplit = tVersion.split("-");
+                        Long tVersion1 = Long.parseLong(tVersionSplit[1].replace(".", ""));
+                        Long tVersion2 = Long.parseLong(tVersionSplit[2]);
+                        if (tVersion1 > version1) {
+                            filteredMap.put(key, map1);
+                        } else if (tVersion1.equals(version1) && tVersion2 > version2) {
+                            filteredMap.put(key, map1);
+                        } else {
+                            System.out.println("ignore " + key + ", current: " + tVersion1 + "-" + tVersion2 + " | existed: " + version1 + "-" + version2);
+                        }
                     }
+                } else {
+                    String key = group + name + version;
+                    filteredMap.put(key, map);
                 }
             }
             counter++;
             System.out.println("index update, counter: " + counter + ", resources size: " + filteredMap.size());
+            if (continuationToken == null || StringUtils.isBlank(String.valueOf(continuationToken))) {
+                System.out.println("index download finished, resources size: " + filteredMap.size());
+                break;
+            }
         }
 
         System.out.println("start download resources");
@@ -84,7 +105,7 @@ public class App {
                 String url = String.valueOf(dMap.get("downloadUrl"));
                 String path = String.valueOf(dMap.get("path"));
                 if (url.endsWith(".pom") || url.endsWith(".jar")) {
-                    genFile(url, initPath + "/" + path);
+                    genFile(url, dir + "/" + path);
                     downloadCounter++;
                 }
             }
@@ -93,9 +114,9 @@ public class App {
     }
 
 
-    public HashMap<String, Object> readJson(String token) throws IOException {
+    public HashMap<String, Object> readJson(String token, String host, String repoId) throws IOException {
         OkHttpClient client = new OkHttpClient();
-        String url = "https://maven.xxx.xxx/service/rest/v1/components?repository=maven-snapshots";
+        String url = "https://" + host + "/service/rest/v1/components?repository=" + repoId;
         if (StringUtils.isNotBlank(token)) {
             url += "&continuationToken=" + token;
         }
